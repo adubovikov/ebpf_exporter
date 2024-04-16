@@ -1,0 +1,112 @@
+tracing:
+  spans:
+    - name: kamailio_service
+      ringbuf: kamailio_service_spans
+      service: kamailio-trace
+      labels:
+        - name: trace_id
+          size: 16
+          decoders:
+            - name: hex
+        - name: parent_span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_monotonic_timestamp_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: span_duration_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: device
+          size: 4
+          decoders:
+            - name: majorminor
+        - name: syscall_id
+          size: 4
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: read
+                1: write
+                2: open
+                3: close
+                4: stat
+                5: fstat
+                6: lstat
+                7: poll
+                8: lseek
+                9: mmap
+                10: mprotect
+                11: munmap
+                12: brk
+                13: rt_sigaction
+                14: rt_sigprocmask
+                15: chown
+                16: getcwd
+                17: chdir
+                21: access
+                23: truncate
+                34: pause
+                39: unlink
+                41: socket
+                42: connect
+                44: socket
+                54: ioctl
+                62: sys_kill
+                63: rename
+                64: mkdir
+                72: fstat
+                73: getdents
+                74: getdents
+                75: getdents
+                76: getdents
+                99: dup
+                128: rt_sigtimedwait
+                133: fcntl
+                157: epoll_create
+                202: epoll_ctl
+                232: epoll_wait
+                233: remap_file_pages
+                257: getdents
+                262: getdents
+                270: io_getevents
+                293: io_submit
+                281: futex
+                318: epoll_pwait
+                332: epoll_pwait
+                333: utimensat
+                334: signalfd
+                3000: receive_msg
+        - name: exit_code
+          size: 4
+          decoders:
+            - name: uint
+        - name: recent_used_cpu
+          size: 4
+          decoders:
+            - name: uint
+        - name: parent_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: my_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: operation
+          size: 4
+          decoders:
+            - name: uint
+            - name: static_map
+              static_map:
+                0: read
+                1: write
+                2: flush
