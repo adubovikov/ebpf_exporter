@@ -11,13 +11,12 @@
 struct disk_span_t {
     struct span_base_t span_base;
     u32 dev;
-    u32 syscall_id;
     u32 exit_code;
     u32 recent_used_cpu;
-    u64 parent_id;
-    u64 my_id;
     u8 op;
-};
+    u32 syscall_id;
+    u32 span_name;
+} ;
 
 struct data_t {
     u64 starttime_ns;
@@ -69,6 +68,22 @@ struct {
     __uint(type, BPF_MAP_TYPE_RINGBUF);
     __uint(max_entries, 256 * 1024);
 } kamailio_service_spans SEC(".maps");
+
+/*
+// Clang 14 in Ubuntu 22.04 does not inline __builtin_memcmp, so we have to reimplement it.
+static inline int memcmp_fallback(const void *str1, const void *str2, size_t count)
+{
+    const unsigned char *s1 = (const unsigned char *) str1;
+    const unsigned char *s2 = (const unsigned char *) str2;
+
+    while (count-- > 0) {
+        if (*s1++ != *s2++)
+            return s1[-1] < s2[-1] ? -1 : 1;
+    }
+
+    return 0;
+}
+*/
 
 SEC("raw_tracepoint/sys_enter")
 int raw_tracepoint_sys_enter(struct bpf_raw_tracepoint_args *ctx)
@@ -211,13 +226,6 @@ int raw_tracepoint_sys_exit(struct bpf_raw_tracepoint_args *ctx)
 
     // submit_kamailio_span(&kamailio_service_spans, struct disk_span_t, rq, {
 
-    u64 idTid = 0;
-    if (ptgid == 1) {
-        bpf_printk("raw_tracepoint_sys_exit: %s; GID: %d, ID:%d\n", comm, tgid, ptr->syscall_id);
-    } else {
-        idTid = ptgid;
-    }
-
     exec_parent = bpf_map_lookup_elem(&traced_tgids, &ptgid);
 
     if (exec_parent) {
@@ -235,20 +243,22 @@ int raw_tracepoint_sys_exit(struct bpf_raw_tracepoint_args *ctx)
 
     bpf_map_update_elem(&traced_tgids, &tgid, &exec_span, BPF_ANY);
 
-    submit_kamailio_span_extra(
-        &kamailio_service_spans, struct disk_span_t, exec_span.span_base.parent.trace_id_hi, exec_span.span_base.parent.trace_id_lo, {
-            span->span_base.parent.span_id = exec_span.span_base.parent.span_id;
-            span->span_base.span_id = exec_span.span_base.span_id;
-            span->span_base.span_duration_ns = latency_ns;
-            span->span_base.span_monotonic_timestamp_ns = timestamp;
-            span->dev = disk ? MKDEV(BPF_CORE_READ(disk, major), BPF_CORE_READ(disk, first_minor)) : 0;
-            span->syscall_id = ptr->syscall_id;
-            span->exit_code = task->exit_code;
-            span->recent_used_cpu = task->recent_used_cpu;
-            span->parent_id = idTid;
-            span->my_id = tgid;
-            span->op = BPF_CORE_READ(rq, cmd_flags) & REQ_OP_MASK;
-        });
+    // memcmp_fallback(span.exe, BASH_PATH, sizeof(BASH_PATH));
+
+    submit_kamailio_span_extra(&kamailio_service_spans, struct disk_span_t, exec_span.span_base.parent.trace_id_hi,
+                               exec_span.span_base.parent.trace_id_lo, {
+                                   span->span_base.parent.span_id = exec_span.span_base.parent.span_id;
+                                   span->span_base.span_id = exec_span.span_base.span_id;
+                                   span->span_base.span_duration_ns = latency_ns;
+                                   span->span_base.span_monotonic_timestamp_ns = timestamp;
+                                   span->dev =
+                                       disk ? MKDEV(BPF_CORE_READ(disk, major), BPF_CORE_READ(disk, first_minor)) : 0;
+                                   span->syscall_id = ptr->syscall_id;
+                                   span->exit_code = task->exit_code;
+                                   span->recent_used_cpu = task->recent_used_cpu;
+                                   span->op = BPF_CORE_READ(rq, cmd_flags) & REQ_OP_MASK;
+                                   span->span_name = ptr->syscall_id;
+                               });
 
     // bpf_map_delete_elem(&enter_id, task);
 
@@ -423,9 +433,8 @@ int user_ret_function(struct pt_regs *ctx)
                                    span->syscall_id = 3000;
                                    span->exit_code = task->exit_code;
                                    span->recent_used_cpu = task->recent_used_cpu;
-                                   span->parent_id = ptgid;
-                                   span->my_id = tgid;
                                    span->op = 0;
+                                   span->span_name = 3000;
                                });
 
     // bpf_map_delete_elem(&enter_id, task);
