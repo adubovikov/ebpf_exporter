@@ -51,8 +51,6 @@ tracing:
             - name: uint
             - name: syscall
             - name: static_map
-              static_map:
-                "unknown_syscall:3000": receive_msg
         - name: span_name
           size: 4
           decoders:
