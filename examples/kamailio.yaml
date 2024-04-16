@@ -50,7 +50,6 @@ tracing:
           decoders:
             - name: uint
             - name: syscall
-            - name: static_map
         - name: span_name
           size: 4
           decoders:
