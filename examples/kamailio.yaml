@@ -55,5 +55,35 @@ tracing:
           decoders:
             - name: uint
             - name: syscall
-
-
+    - name: kamailio_sip_trace
+      ringbuf: kamailio_sip_spans
+      service: sip_trace
+      labels:
+        - name: trace_id
+          size: 16
+          decoders:
+            - name: hex
+        - name: parent_span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_id
+          size: 8
+          decoders:
+            - name: hex
+        - name: span_monotonic_timestamp_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: span_duration_ns
+          size: 8
+          decoders:
+            - name: uint
+        - name: data_len
+          size: 4
+          decoders:
+            - name: uint
+        - name: data
+          size: 1024
+          decoders:
+            - name: string
